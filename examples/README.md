@@ -11,6 +11,7 @@ Caller workflows to copy into a project's `.github/workflows/` folder.
 | [`dotnet.yml`](dotnet.yml) | `ci.yml` | .NET projects |
 | [`go.yml`](go.yml) | `ci.yml` | Go modules |
 | [`workflow-lint.yml`](workflow-lint.yml) | `workflow-lint.yml` | Any repo, lints its workflows |
+| [`zizmor.yml`](zizmor.yml) | `../zizmor.yml` (i.e. `.github/zizmor.yml`) | Needed with workflow-lint so `@v1` refs pass the audit |
 | [`full-pipeline.yml`](full-pipeline.yml) | `pipeline.yml` | CI → release → Docker → deploy |
 
 Copy one with the GitHub CLI:

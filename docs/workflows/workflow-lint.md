@@ -26,8 +26,17 @@ jobs:
 | Input | Default | Description |
 |---|---|---|
 | `actionlint-version` | `1.7.12` | actionlint release |
+| `extra-paths` | | Extra workflow files to lint besides `.github/workflows`, space-separated (actionlint also accepts globs) |
 | `zizmor` | `true` | Run the zizmor audit |
 | `zizmor-min-severity` | `low` | `unknown`, `informational`, `low`, `medium`, `high` |
+
+## Required: zizmor config for `@v1` references
+
+zizmor requires every `uses:` to be pinned to a full commit SHA, including
+calls to this template. If your workflows use `...@v1`, copy
+[`examples/zizmor.yml`](../../examples/zizmor.yml) to `.github/zizmor.yml`
+in your project. It allows tag pins for `speedysebi/*` only, and keeps
+SHA pins required for every third-party action.
 
 ## Notes
 
