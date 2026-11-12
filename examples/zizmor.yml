@@ -1,0 +1,11 @@
+# Copy to .github/zizmor.yml in projects that use workflow-lint.yml.
+#
+# zizmor requires every `uses:` to be pinned to a commit SHA. This lets your
+# own reusable workflows be referenced by tag (@v1) while everything else
+# stays SHA-pinned. Remove it if you pin cicd-template by SHA instead.
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "speedysebi/*": ref-pin
+        "*": hash-pin

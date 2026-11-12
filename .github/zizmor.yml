@@ -12,3 +12,12 @@ rules:
   adhoc-packages:
     ignore:
       - node-ci.yml
+
+  # Hash-pin every third-party action, but allow tags for our own reusable
+  # workflows (the examples call them as @v1). We control those tags, so the
+  # tag-repointing attack this rule guards against doesn't apply.
+  unpinned-uses:
+    config:
+      policies:
+        "speedysebi/*": ref-pin
+        "*": hash-pin
