@@ -65,17 +65,17 @@ jobs:
           dotnet-version: ${{ inputs.dotnet-version }}
 
       - name: Restore
-        run: dotnet restore $PROJECT
+        run: dotnet restore ${PROJECT:+"$PROJECT"}
 
       - name: Format check
         if: inputs.format-check
-        run: dotnet format $PROJECT --verify-no-changes --no-restore
+        run: dotnet format ${PROJECT:+"$PROJECT"} --verify-no-changes --no-restore
 
       - name: Build
-        run: dotnet build $PROJECT --no-restore --configuration "$CONFIGURATION"
+        run: dotnet build ${PROJECT:+"$PROJECT"} --no-restore --configuration "$CONFIGURATION"
 
       - name: Test
-        run: dotnet test $PROJECT --no-build --configuration "$CONFIGURATION" --logger trx --results-directory TestResults
+        run: dotnet test ${PROJECT:+"$PROJECT"} --no-build --configuration "$CONFIGURATION" --logger trx --results-directory TestResults
 
       - name: Upload test results
         if: failure()

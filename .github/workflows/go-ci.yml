@@ -67,7 +67,9 @@ jobs:
       - name: Test
         env:
           FLAGS: ${{ inputs.test-flags }}
-        run: go test $FLAGS ./...
+        run: |
+          read -ra flags <<< "$FLAGS"
+          go test "${flags[@]}" ./...
 
       - name: golangci-lint
         if: inputs.golangci-lint
