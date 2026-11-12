@@ -1,0 +1,130 @@
+# Reusable CI for Java / JVM projects built with Gradle or Maven.
+#
+# Detects the build tool (prefers the wrapper scripts gradlew / mvnw when
+# present), runs the full build including tests, and uploads test reports
+# when something fails so you can read them from the run page.
+#
+# Docs: docs/workflows/java-ci.md
+name: Java CI
+
+on:
+  workflow_call:
+    inputs:
+      java-versions:
+        description: 'JSON array of JDK versions, e.g. ["17", "21"]'
+        type: string
+        default: '["21"]'
+      distribution:
+        description: "JDK distribution passed to actions/setup-java"
+        type: string
+        default: temurin
+      build-tool:
+        description: "gradle or maven; empty auto-detects"
+        type: string
+        default: ""
+      os:
+        description: 'JSON array of runners'
+        type: string
+        default: '["ubuntu-latest"]'
+      working-directory:
+        type: string
+        default: "."
+      command:
+        description: "Override the build command (default: gradle build / mvn verify)"
+        type: string
+        default: ""
+      artifact-path:
+        description: 'Glob (relative to working-directory) to upload, e.g. "build/libs/*.jar"'
+        type: string
+        default: ""
+      artifact-name:
+        type: string
+        default: build
+      timeout-minutes:
+        type: number
+        default: 20
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ${{ matrix.os }} / java ${{ matrix.java }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+        java: ${{ fromJSON(inputs.java-versions) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect build tool
+        id: detect
+        env:
+          TOOL: ${{ inputs.build-tool }}
+        run: |
+          tool="$TOOL"
+          if [ -z "$tool" ]; then
+            if [ -f gradlew ] || compgen -G "build.gradle*" >/dev/null || compgen -G "settings.gradle*" >/dev/null; then
+              tool=gradle
+            elif [ -f pom.xml ]; then
+              tool=maven
+            else
+              echo "::error::No Gradle or Maven build found in '$PWD'. Set build-tool or command."
+              exit 1
+            fi
+          fi
+          echo "tool=$tool" >> "$GITHUB_OUTPUT"
+          echo "Using $tool"
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: ${{ inputs.distribution }}
+          java-version: ${{ matrix.java }}
+          cache: ${{ steps.detect.outputs.tool == 'maven' && 'maven' || '' }}
+          cache-dependency-path: ${{ steps.detect.outputs.tool == 'maven' && format('{0}/**/pom.xml', inputs.working-directory) || '' }}
+
+      - name: Set up Gradle
+        if: steps.detect.outputs.tool == 'gradle'
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Build and test
+        env:
+          TOOL: ${{ steps.detect.outputs.tool }}
+          CMD: ${{ inputs.command }}
+        run: |
+          if [ -z "$CMD" ]; then
+            if [ "$TOOL" = gradle ]; then
+              if [ -f gradlew ]; then chmod +x gradlew; CMD="./gradlew build"; else CMD="gradle build"; fi
+            else
+              if [ -f mvnw ]; then chmod +x mvnw; CMD="./mvnw -B -ntp verify"; else CMD="mvn -B -ntp verify"; fi
+            fi
+          fi
+          echo "+ $CMD"
+          eval "$CMD"
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports-${{ matrix.os }}-java${{ matrix.java }}
+          path: |
+            ${{ inputs.working-directory }}/**/build/reports/tests/
+            ${{ inputs.working-directory }}/**/target/surefire-reports/
+          if-no-files-found: ignore
+
+      - name: Upload artifact
+        if: inputs.artifact-path != '' && strategy.job-index == 0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.working-directory }}/${{ inputs.artifact-path }}
+          if-no-files-found: error
