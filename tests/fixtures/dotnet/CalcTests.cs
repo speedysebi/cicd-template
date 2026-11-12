@@ -1,3 +1,5 @@
+using Xunit;
+
 namespace Fixture.Tests;
 
 public static class Calc
