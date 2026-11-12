@@ -92,8 +92,9 @@ jobs:
           if command -v corepack >/dev/null 2>&1; then
             corepack enable
           else
-            # Node 25+ no longer bundles corepack.
-            npm install --global "$PM"
+            # Node 25+ no longer bundles corepack. No lockfile can cover the
+            # package manager itself, so this install is intentional.
+            npm install --global "$PM" # zizmor: ignore[adhoc-packages]
           fi
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
