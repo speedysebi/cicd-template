@@ -17,6 +17,10 @@ on:
       actionlint-version:
         type: string
         default: "1.7.12"
+      extra-paths:
+        description: 'Space-separated extra workflow files/globs to lint besides .github/workflows, e.g. "examples/*.yml"'
+        type: string
+        default: ""
       zizmor:
         description: "Run the zizmor security audit"
         type: boolean
@@ -41,9 +45,22 @@ jobs:
       - name: Run actionlint
         env:
           VERSION: ${{ inputs.actionlint-version }}
+          EXTRA: ${{ inputs.extra-paths }}
         run: |
           bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${VERSION}/scripts/download-actionlint.bash") "$VERSION" "$RUNNER_TEMP"
-          "$RUNNER_TEMP/actionlint" -color
+          if [ -z "$EXTRA" ]; then
+            "$RUNNER_TEMP/actionlint" -color
+          else
+            # Given explicit files, actionlint lints only those, so list the defaults too.
+            shopt -s nullglob
+            read -ra extra <<< "$EXTRA"
+            files=(.github/workflows/*.yml .github/workflows/*.yaml)
+            for g in "${extra[@]}"; do
+              # shellcheck disable=SC2206 # intentional glob expansion
+              files+=($g)
+            done
+            "$RUNNER_TEMP/actionlint" -color "${files[@]}"
+          fi
 
   zizmor:
     if: inputs.zizmor
@@ -56,6 +73,7 @@ jobs:
 
       - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
+          inputs: . ${{ inputs.extra-paths }}
           advanced-security: false
           annotations: true
           min-severity: ${{ inputs.zizmor-min-severity }}

@@ -19,6 +19,11 @@ concurrency:
 jobs:
   lint:
     uses: ./.github/workflows/workflow-lint.yml
+    with:
+      extra-paths: >-
+        examples/node.yml examples/bun.yml examples/python.yml examples/java.yml
+        examples/dotnet.yml examples/go.yml examples/workflow-lint.yml
+        examples/full-pipeline.yml
 
   node:
     uses: ./.github/workflows/node-ci.yml
@@ -36,17 +41,42 @@ jobs:
       working-directory: tests/fixtures/node
       install-command: bun install
 
+  pnpm:
+    uses: ./.github/workflows/node-ci.yml
+    with:
+      package-manager: pnpm
+      working-directory: tests/fixtures/node-pnpm
+
+  yarn:
+    uses: ./.github/workflows/node-ci.yml
+    with:
+      package-manager: yarn
+      working-directory: tests/fixtures/node-yarn
+
   python:
     uses: ./.github/workflows/python-ci.yml
     with:
       working-directory: tests/fixtures/python
       python-versions: '["3.12", "3.13"]'
 
+  python-uv:
+    uses: ./.github/workflows/python-ci.yml
+    with:
+      working-directory: tests/fixtures/python-uv
+      test-command: python -m unittest discover -s tests -t .
+
   java:
     uses: ./.github/workflows/java-ci.yml
     with:
       working-directory: tests/fixtures/java-maven
       java-versions: '["17", "21"]'
+
+  java-gradle:
+    uses: ./.github/workflows/java-ci.yml
+    with:
+      working-directory: tests/fixtures/java-gradle
+      artifact-path: build/libs/*.jar
+      artifact-name: gradle-fixture-jar
 
   dotnet:
     uses: ./.github/workflows/dotnet-ci.yml
@@ -57,6 +87,7 @@ jobs:
     uses: ./.github/workflows/go-ci.yml
     with:
       working-directory: tests/fixtures/go
+      golangci-lint: true
 
   docker:
     uses: ./.github/workflows/docker.yml
@@ -71,6 +102,18 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       working-directory: tests/fixtures/node
+      dry-run: true
+
+  release-version-files:
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [python-uv, java-gradle, java-maven]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      working-directory: tests/fixtures/${{ matrix.fixture }}
       dry-run: true
 
   check-release-outputs:
