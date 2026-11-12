@@ -1,0 +1,89 @@
+# CI for this repository: lints every workflow, then runs each reusable
+# workflow against a tiny fixture project in tests/fixtures/. If this is
+# green, the workflows work; tag a release only from a green main.
+name: Self-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    uses: ./.github/workflows/workflow-lint.yml
+
+  node:
+    uses: ./.github/workflows/node-ci.yml
+    with:
+      working-directory: tests/fixtures/node
+      os: '["ubuntu-latest", "windows-latest"]'
+      node-versions: '["22", "24"]'
+      artifact-path: dist
+      artifact-name: node-fixture-dist
+
+  bun:
+    uses: ./.github/workflows/node-ci.yml
+    with:
+      package-manager: bun
+      working-directory: tests/fixtures/node
+      install-command: bun install
+
+  python:
+    uses: ./.github/workflows/python-ci.yml
+    with:
+      working-directory: tests/fixtures/python
+      python-versions: '["3.12", "3.13"]'
+
+  java:
+    uses: ./.github/workflows/java-ci.yml
+    with:
+      working-directory: tests/fixtures/java-maven
+      java-versions: '["17", "21"]'
+
+  dotnet:
+    uses: ./.github/workflows/dotnet-ci.yml
+    with:
+      working-directory: tests/fixtures/dotnet
+
+  go:
+    uses: ./.github/workflows/go-ci.yml
+    with:
+      working-directory: tests/fixtures/go
+
+  docker:
+    uses: ./.github/workflows/docker.yml
+    with:
+      context: tests/fixtures/docker
+      file: tests/fixtures/docker/Dockerfile
+      push: false
+
+  release-dry-run:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      working-directory: tests/fixtures/node
+      dry-run: true
+
+  check-release-outputs:
+    needs: release-dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify outputs
+        env:
+          VERSION: ${{ needs.release-dry-run.outputs.version }}
+          TAG: ${{ needs.release-dry-run.outputs.tag }}
+          RELEASED: ${{ needs.release-dry-run.outputs.released }}
+        run: |
+          echo "version=$VERSION tag=$TAG released=$RELEASED"
+          test "$VERSION" = "1.0.0"
+          test "$TAG" = "v1.0.0"
+          test "$RELEASED" = "false"
