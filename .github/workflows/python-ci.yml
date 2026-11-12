@@ -1,0 +1,144 @@
+# Reusable CI for Python projects.
+#
+# Detects the project's tooling and installs accordingly:
+#   uv.lock      -> uv sync           (commands run via `uv run`)
+#   poetry.lock  -> poetry install    (commands run via `poetry run`)
+#   otherwise    -> pip: requirements*.txt and/or `pip install -e .[dev]`
+#
+# Docs: docs/workflows/python-ci.md
+name: Python CI
+
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: 'JSON array of Python versions, e.g. ["3.12", "3.13"]'
+        type: string
+        default: '["3.12"]'
+      os:
+        description: 'JSON array of runners'
+        type: string
+        default: '["ubuntu-latest"]'
+      working-directory:
+        type: string
+        default: "."
+      install-command:
+        description: "Override dependency installation entirely"
+        type: string
+        default: ""
+      lint-command:
+        description: 'Lint command, e.g. "ruff check ." (empty skips)'
+        type: string
+        default: ""
+      typecheck-command:
+        description: 'Type-check command, e.g. "mypy ." (empty skips)'
+        type: string
+        default: ""
+      test-command:
+        description: 'Test command (empty skips). The default "pytest" passes when no tests exist yet.'
+        type: string
+        default: pytest
+      extra-command:
+        type: string
+        default: ""
+      timeout-minutes:
+        type: number
+        default: 15
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ${{ matrix.os }} / python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+        python: ${{ fromJSON(inputs.python-versions) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Set up uv
+        if: hashFiles(format('{0}/uv.lock', inputs.working-directory)) != ''
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        env:
+          INSTALL: ${{ inputs.install-command }}
+        run: |
+          RUN=""
+          if [ -n "$INSTALL" ]; then
+            echo "+ $INSTALL"; eval "$INSTALL"
+          elif [ -f uv.lock ]; then
+            uv sync --all-extras --python "$(python -c 'import sys; print(sys.executable)')"
+            RUN="uv run"
+          elif [ -f poetry.lock ]; then
+            python -m pip install --upgrade pip poetry
+            poetry install --no-interaction
+            RUN="poetry run"
+          else
+            python -m pip install --upgrade pip
+            for f in requirements.txt requirements-dev.txt dev-requirements.txt requirements/dev.txt; do
+              if [ -f "$f" ]; then echo "+ pip install -r $f"; pip install -r "$f"; fi
+            done
+            # Only install the project itself if pyproject/setup.py describes a package
+            # (pyproject.toml is often just tool config).
+            if [ -f setup.py ] || { [ -f pyproject.toml ] && grep -qE '^\[(project|build-system)\]' pyproject.toml; }; then
+              pip install -e ".[dev]"
+            fi
+          fi
+          echo "RUN=$RUN" >> "$GITHUB_ENV"
+
+      - name: Lint
+        if: inputs.lint-command != ''
+        env:
+          CMD: ${{ inputs.lint-command }}
+        run: eval "$RUN $CMD"
+
+      - name: Type-check
+        if: inputs.typecheck-command != ''
+        env:
+          CMD: ${{ inputs.typecheck-command }}
+        run: eval "$RUN $CMD"
+
+      - name: Test
+        if: inputs.test-command != ''
+        env:
+          CMD: ${{ inputs.test-command }}
+        run: |
+          if [ "$CMD" != "pytest" ]; then
+            eval "$RUN $CMD"; exit
+          fi
+          if [ -z "$RUN" ] && ! python -c "import pytest" 2>/dev/null; then
+            pip install pytest
+          fi
+          set +e
+          $RUN python -m pytest
+          code=$?
+          set -e
+          if [ "$code" -eq 5 ]; then
+            echo "::warning::pytest collected no tests"
+            exit 0
+          fi
+          exit "$code"
+
+      - name: Extra command
+        if: inputs.extra-command != ''
+        env:
+          CMD: ${{ inputs.extra-command }}
+        run: eval "$RUN $CMD"
