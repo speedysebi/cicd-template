@@ -1,0 +1,61 @@
+# A complete CI/CD pipeline for a small project:
+#
+#   every push / PR  ->  CI
+#   push to main     ->  CI -> release (only if the version was bumped)
+#                              -> Docker image -> deploy (manual approval)
+#
+# Copy to .github/workflows/pipeline.yml and delete the stages you don't need.
+name: Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Never cancel a run on main halfway through a release.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  ci:
+    uses: speedysebi/cicd-template/.github/workflows/node-ci.yml@v1   # swap for python-ci, java-ci, go-ci, ...
+
+  release:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    uses: speedysebi/cicd-template/.github/workflows/release.yml@v1
+
+  image:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: speedysebi/cicd-template/.github/workflows/docker.yml@v1
+    with:
+      push: true
+      version: ${{ needs.release.outputs.version }}
+
+  deploy:
+    needs: [release, image]
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    # Create the "production" environment under Settings -> Environments and
+    # add yourself as a required reviewer to get a manual approval gate.
+    environment: production
+    steps:
+      - name: Deploy
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+          DIGEST: ${{ needs.image.outputs.digest }}
+        run: |
+          echo "Deploying $IMAGE@$DIGEST"
+          # Replace with your real deploy, e.g. an SSH command, a platform
+          # CLI (fly deploy, railway up), or a webhook.

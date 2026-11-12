@@ -1,0 +1,17 @@
+# Copy to .github/workflows/workflow-lint.yml to lint your workflow files on
+# every change to them.
+name: Workflow lint
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/**"]
+  pull_request:
+    paths: [".github/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    uses: speedysebi/cicd-template/.github/workflows/workflow-lint.yml@v1

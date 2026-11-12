@@ -1,0 +1,21 @@
+# Copy to .github/workflows/ci.yml in a Gradle or Maven project.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: speedysebi/cicd-template/.github/workflows/java-ci.yml@v1
+    with:
+      java-versions: '["21"]'
+      # artifact-path: build/libs/*.jar

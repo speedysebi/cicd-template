@@ -1,0 +1,22 @@
+# Copy to .github/workflows/ci.yml in a .NET project.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: speedysebi/cicd-template/.github/workflows/dotnet-ci.yml@v1
+    with:
+      dotnet-version: 8.0.x
+      # project: MyApp.sln
+      # format-check: true
