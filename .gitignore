@@ -1,0 +1,19 @@
+# Fixture build output and dependencies
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+target/
+build/
+.gradle/
+bin/
+obj/
+TestResults/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
