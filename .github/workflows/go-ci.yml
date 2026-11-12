@@ -1,0 +1,76 @@
+# Reusable CI for Go modules: vet, build, test, optional golangci-lint.
+#
+# Docs: docs/workflows/go-ci.md
+name: Go CI
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version; empty reads it from go.mod"
+        type: string
+        default: ""
+      os:
+        description: 'JSON array of runners'
+        type: string
+        default: '["ubuntu-latest"]'
+      working-directory:
+        type: string
+        default: "."
+      test-flags:
+        description: "Flags passed to go test"
+        type: string
+        default: "-race"
+      golangci-lint:
+        description: "Run golangci-lint"
+        type: boolean
+        default: false
+      timeout-minutes:
+        type: number
+        default: 15
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version }}
+          go-version-file: ${{ inputs.go-version == '' && format('{0}/go.mod', inputs.working-directory) || '' }}
+          # Modules without dependencies have no go.sum; caching would fail.
+          cache: ${{ hashFiles(format('{0}/go.sum', inputs.working-directory)) != '' }}
+          cache-dependency-path: ${{ hashFiles(format('{0}/go.sum', inputs.working-directory)) != '' && format('{0}/go.sum', inputs.working-directory) || '' }}
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        env:
+          FLAGS: ${{ inputs.test-flags }}
+        run: go test $FLAGS ./...
+
+      - name: golangci-lint
+        if: inputs.golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          working-directory: ${{ inputs.working-directory }}
