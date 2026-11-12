@@ -7,6 +7,20 @@ All notable changes to these workflows. Format based on
 
 ## [Unreleased]
 
+### Added
+
+- `workflow-lint.yml`: `extra-paths` input to lint workflow files outside
+  `.github/workflows`.
+- `examples/zizmor.yml` for projects that call this template by tag.
+- Self-test coverage for pnpm, yarn, uv, Gradle, golangci-lint, release
+  version parsing from pyproject.toml/gradle.properties/pom.xml, and lint of
+  every example.
+
+### Fixed
+
+- Projects copying the examples failed `workflow-lint.yml`, because zizmor
+  requires SHA pins for `@v1` references.
+
 ## [1.0.0] - 2026-11-11
 
 ### Added

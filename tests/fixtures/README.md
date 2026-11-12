@@ -7,10 +7,13 @@ red self-test means a workflow broke, not the fixture.
 | Fixture | Exercised by | Notes |
 |---|---|---|
 | [`node/`](node) | `node-ci.yml` (npm on Linux + Windows, Node 22 + 24; and bun) | `test` uses `node --test`; `build` writes `dist/` for the artifact upload |
+| [`node-pnpm/`](node-pnpm), [`node-yarn/`](node-yarn) | `node-ci.yml` with pnpm / yarn 1 | Zero-dependency lockfiles |
 | [`python/`](python) | `python-ci.yml` (3.12, 3.13) | No requirements: checks pytest auto-install |
-| [`java-maven/`](java-maven) | `java-ci.yml` (JDK 17, 21) | JUnit 5 via surefire |
+| [`python-uv/`](python-uv) | `python-ci.yml` uv path; `release.yml` pyproject.toml | unittest, so the lock has no packages |
+| [`java-maven/`](java-maven) | `java-ci.yml` (JDK 17, 21); `release.yml` pom.xml | JUnit 5 via surefire |
+| [`java-gradle/`](java-gradle) | `java-ci.yml` Gradle without wrapper + jar artifact; `release.yml` gradle.properties | Uses the runner's preinstalled Gradle |
 | [`dotnet/`](dotnet) | `dotnet-ci.yml` | xUnit, `net8.0` |
-| [`go/`](go) | `go-ci.yml` | No dependencies, so no `go.sum`: checks the cache toggle |
+| [`go/`](go) | `go-ci.yml` + golangci-lint | No dependencies, so no `go.sum`: checks the cache toggle |
 | [`docker/`](docker) | `docker.yml` (build only) | Alpine image |
 | `node/package.json` version | `release.yml` (dry run) | Expects version `1.0.0` / tag `v1.0.0` |
 
