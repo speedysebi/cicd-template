@@ -18,10 +18,10 @@ concurrency:
 
 jobs:
   lint:
-    uses: ./.github/workflows/workflow-lint.yml
+    uses: $/.github/workflows/workflow-lint.yml
 
   node:
-    uses: ./.github/workflows/node-ci.yml
+    uses: $/.github/workflows/node-ci.yml
     with:
       working-directory: tests/fixtures/node
       os: '["ubuntu-latest", "windows-latest"]'
@@ -30,36 +30,36 @@ jobs:
       artifact-name: node-fixture-dist
 
   bun:
-    uses: ./.github/workflows/node-ci.yml
+    uses: $/.github/workflows/node-ci.yml
     with:
       package-manager: bun
       working-directory: tests/fixtures/node
       install-command: bun install
 
   python:
-    uses: ./.github/workflows/python-ci.yml
+    uses: $/.github/workflows/python-ci.yml
     with:
       working-directory: tests/fixtures/python
       python-versions: '["3.12", "3.13"]'
 
   java:
-    uses: ./.github/workflows/java-ci.yml
+    uses: $/.github/workflows/java-ci.yml
     with:
       working-directory: tests/fixtures/java-maven
       java-versions: '["17", "21"]'
 
   dotnet:
-    uses: ./.github/workflows/dotnet-ci.yml
+    uses: $/.github/workflows/dotnet-ci.yml
     with:
       working-directory: tests/fixtures/dotnet
 
   go:
-    uses: ./.github/workflows/go-ci.yml
+    uses: $/.github/workflows/go-ci.yml
     with:
       working-directory: tests/fixtures/go
 
   docker:
-    uses: ./.github/workflows/docker.yml
+    uses: $/.github/workflows/docker.yml
     with:
       context: tests/fixtures/docker
       file: tests/fixtures/docker/Dockerfile
@@ -68,7 +68,7 @@ jobs:
   release-dry-run:
     permissions:
       contents: write
-    uses: ./.github/workflows/release.yml
+    uses: $/.github/workflows/release.yml
     with:
       working-directory: tests/fixtures/node
       dry-run: true
